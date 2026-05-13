@@ -2,7 +2,38 @@
 
 > **Tagline:** *"Every Voice. Every Signal. Every Insight."*
 
-A full-stack review intelligence platform analyzing 10,000 Meta Ray-Ban Smart Glasses reviews. Built with Node.js, Express, MongoDB, and React.
+A full-stack review intelligence platform that ingests, analyzes, and visualizes 10,000+ Amazon reviews for Meta Ray-Ban Smart Glasses. The backend provides RESTful APIs for CRUD operations, advanced filtering, pagination, analytics aggregation, and JWT-authenticated admin access. The frontend (Phase 2) will surface these insights through interactive dashboards.
+
+---
+
+## Project Overview
+
+ReviewHub transforms raw customer feedback into structured intelligence:
+
+| Capability | Description |
+|---|---|
+| **Review Ingestion** | Parse and transform 10,000 raw JSON records into a normalized MongoDB collection |
+| **Search & Filter** | Full-text search across review titles and bodies with multi-field filtering |
+| **Analytics** | Aggregated ratings distribution, sentiment trends, helpfulness scoring |
+| **Authentication** | JWT-based admin and analyst login with role-based access control |
+| **Dashboard** | *(Phase 2)* React-based admin panel and insights studio |
+
+---
+
+## Dataset Summary
+
+The dataset contains **10,000 Amazon reviews** for Meta Ray-Ban Smart Glasses across **35 unique reviewer profiles**.
+
+| Attribute | Details |
+|---|---|
+| **Total Records** | 10,000 |
+| **Unique Reviewers** | 35 |
+| **Rating Distribution** | 1★ (294), 3★ (1,423), 4★ (3,380), 5★ (4,903) |
+| **Sentiment Split** | 82.8% Positive · 17.2% Negative |
+| **Reviews with Images** | 1,158 of 10,000 |
+| **Key Fields** | reviewID, name, date, rating, helpful, title, review, helpfulness_score, is_positive_review |
+
+The dataset contains intentional duplicates of 35 base reviews with varied helpfulness scores — simulating real-world review score drift over time.
 
 ---
 
@@ -14,13 +45,13 @@ meta_glasses_reviews_vineet_prajapati/
 │   ├── src/
 │   │   ├── config/          # MongoDB connection & env configuration
 │   │   ├── controllers/     # Request handlers
-│   │   ├── models/          # Mongoose schemas
-│   │   ├── routes/          # API route definitions
+│   │   ├── models/          # Mongoose schemas (reviews, users)
+│   │   ├── routes/          # API route definitions (auth, reviews, analytics, health)
 │   │   ├── services/        # Business logic layer
-│   │   ├── middlewares/     # Auth, validation, error handling
+│   │   ├── middlewares/     # Auth (JWT), RBAC, validation, error handling, logging
 │   │   ├── validators/      # Input validation schemas
-│   │   ├── utils/           # Shared utilities
-│   │   └── scripts/         # Database seeding scripts
+│   │   ├── utils/           # Shared utilities (API response, pagination, filter builder)
+│   │   └── scripts/         # Database seeding script
 │   ├── tests/               # API & integration tests
 │   ├── app.js               # Express app configuration
 │   ├── server.js            # Server entry point
@@ -79,35 +110,89 @@ Server starts at `http://localhost:5000`
 curl http://localhost:5000/api/v1/health
 ```
 
+Expected response:
+```json
+{
+  "success": true,
+  "message": "ReviewHub API is running",
+  "timestamp": "2026-05-13T12:00:00.000Z",
+  "uptime": 42.5
+}
+```
+
 ---
 
-## Development Timeline
+## API Endpoints (Planned)
 
-| Phase | Duration | Dates | Status |
+### Authentication
+
+| Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| **Phase 1: Backend** | 15 days | May 13 – May 27, 2026 | 🔵 In Progress |
-| **Phase 2: Frontend** | 15 days | May 28 – June 11, 2026 | ⏳ Not Started |
+| POST | `/api/v1/auth/register` | No | Register admin/analyst |
+| POST | `/api/v1/auth/login` | No | Login, receive JWT |
+| GET | `/api/v1/auth/me` | Yes | Current user profile |
 
-### Day 1 — May 13, 2026 ✅
+### Reviews
 
-- [x] Dataset analyzed (10,000 Meta Ray-Ban Smart Glasses reviews)
-- [x] MongoDB schema designed (reviews + users collections)
-- [x] Node.js project initialized with Express, Mongoose, dotenv, cors, bcrypt, jsonwebtoken
-- [x] Backend folder structure created (routes, controllers, services, models, middlewares, utils, config)
-- [x] Express server configured on port 5000 with health endpoint
-- [x] MongoDB connection configured with retry logic
-- [x] Environment variables configured (.env + .env.example)
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/reviews` | No | List reviews (paginated, filterable) |
+| GET | `/api/v1/reviews/:id` | No | Single review by ID |
+| POST | `/api/v1/reviews` | Admin | Create review |
+| PUT | `/api/v1/reviews/:id` | Admin | Update review |
+| DELETE | `/api/v1/reviews/:id` | Admin | Soft-delete review |
+
+### Analytics
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/analytics/overview` | Yes | Aggregate KPIs (total reviews, avg rating, sentiment %) |
+| GET | `/api/v1/analytics/ratings` | Yes | Rating distribution breakdown |
+| GET | `/api/v1/analytics/trends` | Yes | Review trends over time |
+
+### System
+
+| Method | Endpoint | Auth | Description |
+|---|---|---|---|
+| GET | `/api/v1/health` | No | Server health status |
 
 ---
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Backend | Node.js, Express.js |
-| Database | MongoDB, Mongoose ODM |
-| Auth | JWT, bcrypt |
-| Frontend | *(Phase 2)* |
+| Layer | Technology | Purpose |
+|---|---|---|
+| **Runtime** | Node.js | JavaScript runtime |
+| **Framework** | Express.js | HTTP server and routing |
+| **Database** | MongoDB | NoSQL document store |
+| **ODM** | Mongoose | Schema modeling and validation |
+| **Authentication** | JWT + bcrypt | Token-based auth with password hashing |
+| **Utilities** | dotenv, cors | Environment config, cross-origin support |
+
+---
+
+## Architecture
+
+```
+Client (React)
+     │
+     ▼
+  Express Server (port 5000)
+     │
+     ├── Middleware Layer (auth, validation, error handling, logging)
+     │
+     ├── Routes → Controllers → Services → Models → MongoDB
+     │
+     └── /api/v1/health (public)
+```
+
+The backend follows an **MVC-inspired layered architecture**:
+
+- **Controllers** handle HTTP request/response only
+- **Services** contain business logic
+- **Models** define Mongoose schemas with validation
+- **Middlewares** handle cross-cutting concerns (auth, validation, errors)
+- **Utils** provide reusable helpers (pagination, response formatting, filter building)
 
 ---
 
