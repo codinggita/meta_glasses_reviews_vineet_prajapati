@@ -66,6 +66,47 @@ meta_glasses_reviews_vineet_prajapati/
 
 ---
 
+## Database Schema
+
+### Reviews Collection
+
+The `Review` schema stores all 15 fields from the dataset plus timestamps and soft-delete support:
+
+| Field | Type | Constraints |
+|---|---|---|
+| `reviewID` | String | Required, indexed |
+| `name` | String | Required, indexed |
+| `date` | Date | Required, indexed — parsed from "March 9, 2025" |
+| `verifiedPurchase` | Boolean | Cast from "True"/"False" |
+| `rating` | Number | Enum: 1, 3, 4, 5 — indexed |
+| `helpful` | Number | Parsed from comma-formatted string |
+| `title` | String | Full-text indexed with `review` |
+| `review` | String | Full-text indexed with `title` |
+| `profile` | String | Reviewer profile URL |
+| `country` | String | |
+| `reviewLink` | String | Original Amazon review URL |
+| `reviewImage` | String | Optional image URL |
+| `helpful_aug` | Number | Indexed |
+| `is_positive_review` | Number | 0 or 1, indexed |
+| `helpfulness_score` | Number | 0.0–10.0, indexed |
+| `isDeleted` | Boolean | Soft-delete flag, indexed |
+
+Indexes: `rating`, `date`, `is_positive_review`, `helpfulness_score`, `name`, text index on `title` + `review`.
+
+### Users Collection
+
+The `User` schema handles authentication:
+
+| Field | Type | Constraints |
+|---|---|---|
+| `name` | String | Required, max 100 chars |
+| `email` | String | Required, unique, lowercase |
+| `password` | String | Required, min 8 chars, bcrypt hashed (12 rounds), excluded from queries |
+| `role` | String | Enum: `admin`, `analyst` |
+| `isActive` | Boolean | Default: true |
+
+---
+
 ## Backend Setup
 
 ### Prerequisites
@@ -122,7 +163,7 @@ Expected response:
 
 ---
 
-## API Endpoints (Planned)
+## API Endpoints
 
 ### Authentication
 
@@ -188,11 +229,43 @@ Client (React)
 
 The backend follows an **MVC-inspired layered architecture**:
 
-- **Controllers** handle HTTP request/response only
-- **Services** contain business logic
-- **Models** define Mongoose schemas with validation
-- **Middlewares** handle cross-cutting concerns (auth, validation, errors)
+- **Models** define Mongoose schemas with validation and indexes
+- **Services** contain business logic (CRUD, auth workflows)
+- **Controllers** handle HTTP request/response only — delegate to services
+- **Routes** define endpoints and wire middleware chains
+- **Middlewares** handle cross-cutting concerns (JWT auth, RBAC, validation, error handling, logging)
+- **Validators** provide input validation functions (review data, user registration/login)
 - **Utils** provide reusable helpers (pagination, response formatting, filter building)
+- **Scripts** contain the dataset seeding pipeline with data transformation
+
+### Middleware Chain
+
+```
+Request
+  └─ CORS
+  └─ JSON Body Parser
+  └─ Logger (method, URL, IP, timestamp)
+  └─ authMiddleware (JWT verify) ← on protected routes
+  └─ roleMiddleware (admin check) ← on admin routes
+  └─ validateMiddleware ← on create/update routes
+  └─ Controller (delegates to Service)
+  └─ Global Error Middleware (formats consistent error response)
+```
+
+### Seeding
+
+```bash
+cd reviewhub-backend
+npm run seed
+```
+
+The seeding script (`src/scripts/seed.js`):
+1. Reads the raw 10,000-record JSON dataset
+2. Transforms each record (date → ISODate, rating → Float, helpful → Int, verifiedPurchase → Boolean)
+3. Clears the existing `reviews` collection
+4. Bulk inserts all transformed documents
+5. Ensures all indexes are created
+6. Prints a sample document for verification
 
 ---
 
