@@ -317,6 +317,36 @@ The seeding script (`src/scripts/seed.js`):
 
 ---
 
+## Testing
+
+The backend includes a comprehensive test suite using **Jest** and **Supertest**.
+
+### Running Tests
+
+```bash
+cd reviewhub-backend
+
+# Run all tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+### Test Coverage
+
+| Suite | File | Tests |
+|---|---|---|
+| **Auth** | `tests/auth.test.js` | Register (success, missing fields, short password, duplicate email, default role), Login (success, wrong password, non-existent email, missing fields), Get Me (valid token, no token, invalid token) |
+| **Reviews** | `tests/review.test.js` | Create (admin success, analyst forbidden, invalid rating, invalid date, out-of-range score, no auth), List (pagination, rating filter, sentiment filter, name filter, image filter, sort, no auth), Get by ID (success, 404), Update (admin success, analyst forbidden, invalid rating), Delete (admin success, soft delete exclusion, analyst forbidden) |
+| **Analytics** | `tests/analytics.test.js` | Overview, Rating Distribution, Sentiment Trend, Top Reviewers, Helpfulness Distribution, Monthly Volume, Image vs No Image, Auth rejection |
+
+### Test Database
+
+Tests use a separate MongoDB database (`reviewhub_test`) that is automatically created and cleaned between test runs. Configure via `TEST_MONGO_URI` environment variable if needed.
+
+---
+
 ## License
 
 ISC
