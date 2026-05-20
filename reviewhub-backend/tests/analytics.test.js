@@ -4,14 +4,7 @@ const Review = require('../src/models/review.model');
 
 let token;
 
-beforeAll(async () => {
-  const res = await request(app).post('/api/v1/auth/register').send({
-    name: 'Analytics Tester',
-    email: 'analytics@test.com',
-    password: 'securepass123',
-  });
-  token = res.body.token;
-
+const seedReviews = async () => {
   await Review.insertMany([
     {
       reviewID: 'RA001',
@@ -67,9 +60,22 @@ beforeAll(async () => {
       review: 'Love these glasses',
       is_positive_review: 1,
       helpfulness_score: 8.5,
-      helpful_aug: 300,
+      helpful_aug: 400,
     },
   ]);
+};
+
+beforeAll(async () => {
+  const res = await request(app).post('/api/v1/auth/register').send({
+    name: 'Analytics Tester',
+    email: 'analytics@test.com',
+    password: 'securepass123',
+  });
+  token = res.body.token;
+});
+
+beforeEach(async () => {
+  await seedReviews();
 });
 
 describe('Analytics API', () => {
