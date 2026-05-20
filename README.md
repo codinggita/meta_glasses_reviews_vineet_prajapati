@@ -177,19 +177,41 @@ Expected response:
 
 | Method | Endpoint | Auth | Description |
 |---|---|---|---|
-| GET | `/api/v1/reviews` | No | List reviews (paginated, filterable) |
-| GET | `/api/v1/reviews/:id` | No | Single review by ID |
+| GET | `/api/v1/reviews` | Yes | List reviews (paginated, filterable) |
+| GET | `/api/v1/reviews/:id` | Yes | Single review by ID |
+| GET | `/api/v1/reviews/search?q=...` | Yes | Full-text search |
 | POST | `/api/v1/reviews` | Admin | Create review |
 | PUT | `/api/v1/reviews/:id` | Admin | Update review |
 | DELETE | `/api/v1/reviews/:id` | Admin | Soft-delete review |
 
+**Query Parameters for GET `/api/v1/reviews`:**
+
+| Param | Type | Description |
+|---|---|---|
+| `page` | Number | Page number (default: 1) |
+| `limit` | Number | Records per page (default: 20, max: 100) |
+| `rating` | Number | Filter by star rating (1, 3, 4, 5) |
+| `is_positive_review` | Number | 0 or 1 |
+| `country` | String | Filter by country |
+| `name` | String | Filter by reviewer name |
+| `startDate` / `endDate` | String | Date range filter |
+| `sortBy` | String | Field to sort (date, rating, helpfulness_score, helpful_aug) |
+| `order` | String | `asc` / `desc` |
+| `hasImage` | Boolean | Filter reviews with/without images |
+
 ### Analytics
 
-| Method | Endpoint | Auth | Description |
-|---|---|---|---|
-| GET | `/api/v1/analytics/overview` | Yes | Aggregate KPIs (total reviews, avg rating, sentiment %) |
-| GET | `/api/v1/analytics/ratings` | Yes | Rating distribution breakdown |
-| GET | `/api/v1/analytics/trends` | Yes | Review trends over time |
+All analytics endpoints require authentication.
+
+| Method | Endpoint | Description |
+|---|---|---|
+| GET | `/api/v1/analytics/overview` | Total reviews, avg rating, sentiment split, image count |
+| GET | `/api/v1/analytics/rating-distribution` | Count per star rating |
+| GET | `/api/v1/analytics/sentiment-trend` | Positive/negative trend by month |
+| GET | `/api/v1/analytics/top-reviewers` | Top 10 reviewers by helpful_aug |
+| GET | `/api/v1/analytics/helpfulness-distribution` | Score buckets (0–2, 2–4, 4–6, 6–8, 8–10) |
+| GET | `/api/v1/analytics/monthly-volume` | Review count grouped by month/year |
+| GET | `/api/v1/analytics/image-vs-no-image` | Reviews with vs without images |
 
 ### System
 
@@ -208,6 +230,7 @@ Expected response:
 | **Database** | MongoDB | NoSQL document store |
 | **ODM** | Mongoose | Schema modeling and validation |
 | **Authentication** | JWT + bcrypt | Token-based auth with password hashing |
+| **Rate Limiting** | express-rate-limit | 100 requests / 15 min per IP |
 | **Utilities** | dotenv, cors | Environment config, cross-origin support |
 
 ---
@@ -243,6 +266,7 @@ The backend follows an **MVC-inspired layered architecture**:
 ```
 Request
   └─ CORS
+  └─ Rate Limiter (100 req/15min per IP)
   └─ JSON Body Parser
   └─ Logger (method, URL, IP, timestamp)
   └─ authMiddleware (JWT verify) ← on protected routes
@@ -251,6 +275,30 @@ Request
   └─ Controller (delegates to Service)
   └─ Global Error Middleware (formats consistent error response)
 ```
+
+### Aggregation Pipelines
+
+Analytics endpoints use MongoDB aggregation pipelines for real-time data analysis:
+
+- **Overview** — `$group` with `$sum`, `$avg`, `$cond` for total reviews, avg rating, sentiment split, image count
+- **Rating Distribution** — `$group` by rating field with `$sort`
+- **Sentiment Trend** — `$group` by year/month with `$year`/`$month` date operators
+- **Top Reviewers** — `$group` by name, `$sort` by helpful_aug, `$limit` 10
+- **Helpfulness Distribution** — Bucket aggregation across 5 score ranges (0–2, 2–4, 4–6, 6–8, 8–10)
+- **Monthly Volume** — `$group` by year/month with review count
+- **Image vs No Image** — `$cond` comparison of reviewImage field
+
+### Postman Testing
+
+A Postman collection is included at `reviewhub-backend/postman_collection.json` with:
+
+- All endpoints organized by category (Health, Auth, Reviews, Analytics)
+- Collection variables for `base_url` and `token`
+- Auto-capture of JWT token on login via test script
+- Pre-filled request bodies for register, login, and create review
+- Example query parameters for paginated and filtered review requests
+
+Import the collection into Postman, set the `base_url` variable, register a user, login to capture the token, then test all endpoints.
 
 ### Seeding
 
