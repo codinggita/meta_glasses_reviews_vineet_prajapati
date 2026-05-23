@@ -20,7 +20,7 @@ const createReview = async (payload) => {
 
 const updateReview = async (id, payload) => {
   const review = await Review.findByIdAndUpdate(id, payload, {
-    new: true,
+    returnDocument: 'after',
     runValidators: true,
   }).lean();
   return review;
@@ -30,7 +30,7 @@ const softDeleteReview = async (id) => {
   const review = await Review.findByIdAndUpdate(
     id,
     { isDeleted: true },
-    { new: true }
+    { returnDocument: 'after' }
   ).lean();
   return review;
 };
